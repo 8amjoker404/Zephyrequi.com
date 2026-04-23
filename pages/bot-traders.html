@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bot Traders - Zephyrequi</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="../js/config.js"></script>
+    <link rel="stylesheet" href="./components/css/sidebar.css" />
+    <link rel="stylesheet" href="./css/bot-traders.css" />
+</head>
+<body>
+    <div class="dashboard">
+        <div id="sidebar-mount"></div>
+
+        <main class="main-content">
+            <header class="header">
+                <div class="header-left">
+                    <button class="mobile-toggle" id="mobile-toggle">☰</button>
+                    <div class="page-heading">Bot Traders</div>
+                </div>
+
+                <div class="header-right">
+                    <button class="header-icon" onclick="window.location.href='notifications.html';">
+                        🔔
+                        <span class="notification-indicator"></span>
+                    </button>
+
+                    <div class="user-profile">
+                        <div class="avatar" id="userAvatar">JD</div>
+                        <div class="user-info">
+                            <div class="user-name" id="userName">Light Potato</div>
+                        </div>
+                    </div>
+
+                    <button class="header-logout-btn" onclick="logout()">Logout</button>
+                </div>
+            </header>
+
+            <div class="content">
+                <div id="toastContainer" class="toast-container"></div>
+
+                <div id="copyBotModal" class="modal-overlay">
+                    <div class="modal-container">
+                        <div class="modal-bot-info">
+                            <div class="modal-bot-avatar" id="modalBotAvatar">🤖</div>
+                            <div class="modal-bot-details">
+                                <h3 id="modalBotName">Bot Trader</h3>
+                                <div class="modal-bot-type" id="modalBotType">AI Trading Bot</div>
+                            </div>
+                        </div>
+
+                        <div class="modal-content">
+                            <form id="copyBotForm">
+                                <div class="form-group">
+                                    <label class="form-label">Investment Amount ($)</label>
+                                    <input
+                                        type="number"
+                                        id="copyAmount"
+                                        class="form-input"
+                                        placeholder="0.00"
+                                        step="0.01"
+                                        min="1"
+                                        required
+                                    />
+                                    <small style="color: #9ca3af; font-size: 12px; margin-top: 4px; display: block;">
+                                        Available: $<span id="availableBalance">0.00</span>
+                                    </small>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Take Profit ($)</label>
+                                        <input
+                                            type="number"
+                                            id="copyTakeProfit"
+                                            class="form-input"
+                                            placeholder="Optional"
+                                            step="0.01"
+                                            min="0.01"
+                                        />
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">Stop Loss ($)</label>
+                                        <input
+                                            type="number"
+                                            id="copyStopLoss"
+                                            class="form-input"
+                                            placeholder="Optional"
+                                            step="0.01"
+                                            min="0.01"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div style="background: rgba(34, 197, 94, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+                                    <p style="color: #22c55e; font-size: 14px; margin: 0;">
+                                        <strong>Note:</strong> You will copy this bot's AI-powered trading strategy.
+                                        All future trades will be automatically executed with your specified parameters.
+                                    </p>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="modal-actions">
+                            <button class="modal-btn cancel" id="copyBotCancel" type="button">Cancel</button>
+                            <button class="modal-btn confirm" id="copyBotConfirm" type="button">Copy Bot</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Bot Traders</h1>
+                        <p class="page-subtitle">Copy successful trading strategies from AI-powered bots</p>
+                    </div>
+
+                    <div class="header-actions">
+                        <button class="refresh-btn" onclick="refreshData()">
+                            <span>🔄</span>
+                            <span>Refresh</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="balance-overview">
+                    <div class="balance-card">
+                        <div class="balance-header">
+                            <div class="balance-icon trade">📊</div>
+                            <div>
+                                <div class="balance-title">Trade Balance</div>
+                                <div class="balance-value" id="tradeBalance">$0.00</div>
+                                <div class="balance-subtitle">Available for copy trading</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="balance-card">
+                        <div class="balance-header">
+                            <div class="balance-icon bot">🤖</div>
+                            <div>
+                                <div class="balance-title">Active Bots</div>
+                                <div class="balance-value" id="activeBots">0</div>
+                                <div class="balance-subtitle">Bots you're copying</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="balance-card">
+                        <div class="balance-header">
+                            <div class="balance-icon bot">⚡</div>
+                            <div>
+                                <div class="balance-title">Available Bots</div>
+                                <div class="balance-value" id="totalBots">0</div>
+                                <div class="balance-subtitle">AI trading bots</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bot-filter">
+                    <button class="filter-btn active" data-filter="all">All Bots</button>
+                </div>
+
+                <div id="loadingBots" class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>Loading bot traders...</p>
+                </div>
+
+                <div id="emptyBots" class="empty-state hidden">
+                    <div class="empty-icon">🤖</div>
+                    <h4 class="empty-title">No Bot Traders Available</h4>
+                    <p class="empty-subtitle">Check back later for new AI trading bots</p>
+                </div>
+
+                <div id="botTradersGrid" class="bot-traders-grid hidden"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const token = localStorage.getItem("token");
+
+        const userApi = axios.create({
+            baseURL: `${window.API_BASE_URL}/users`,
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
+        });
+
+        let botTraders = [];
+        let filteredBots = [];
+        let selectedBotId = null;
+        let selectedBot = null;
+        let userTradeBalance = 0;
+        let currentFilter = "all";
+        let toastCounter = 0;
+
+        document.addEventListener("DOMContentLoaded", async function () {
+            initializePage();
+            setupEventListeners();
+            await Promise.all([
+                fetchTradeBalance(),
+                fetchBotTraders()
+            ]);
+        });
+
+        function initializePage() {
+            if (!token) {
+                showToast("Please login to access bot traders", "error");
+                setTimeout(() => {
+                    window.location.href = "../index.html";
+                }, 1500);
+                return;
+            }
+        }
+
+        function setupEventListeners() {
+            const cancelBtn = document.getElementById("copyBotCancel");
+            const confirmBtn = document.getElementById("copyBotConfirm");
+            const modal = document.getElementById("copyBotModal");
+
+            if (cancelBtn) cancelBtn.addEventListener("click", closeCopyModal);
+            if (confirmBtn) confirmBtn.addEventListener("click", handleCopyBot);
+
+            document.querySelectorAll(".filter-btn").forEach(btn => {
+                btn.addEventListener("click", function () {
+                    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+                    this.classList.add("active");
+                    currentFilter = this.dataset.filter || "all";
+                    filterBots();
+                });
+            });
+
+            document.addEventListener("keydown", function (event) {
+                if (event.key === "Escape") {
+                    closeCopyModal();
+                }
+            });
+
+            if (modal) {
+                modal.addEventListener("click", function (event) {
+                    if (event.target === this) {
+                        closeCopyModal();
+                    }
+                });
+            }
+        }
+
+        function normalizeBot(bot = {}) {
+            return {
+                id: bot.id || 0,
+                trader_name: bot.trader_name || `Bot #${bot.id || 0}`,
+                bio: bot.bio || "Advanced AI-powered trading bot using machine learning algorithms to identify profitable trading opportunities across multiple cryptocurrency markets.",
+                performance_7d: parseFloat(bot.performance_7d || 0),
+                win_rate: parseFloat(bot.win_rate || 0),
+                total_positions: parseInt(bot.total_positions || 0),
+                total_copiers: parseInt(bot.total_copiers || 0),
+                aum: parseFloat(bot.aum || 0),
+                profit_sharing: parseFloat(bot.profit_sharing || 0),
+                join_day: bot.join_day || bot.created_at || new Date().toISOString(),
+                trader_type: bot.trader_type || "bot",
+                status: bot.status || "active",
+                avatar: bot.avatar || null
+            };
+        }
+
+        async function fetchTradeBalance() {
+            try {
+                const balanceResponse = await userApi.get("/balances/summary");
+                const balances = balanceResponse.data?.balances || {};
+
+                userTradeBalance = parseFloat(balances.trade_balance || 0);
+
+                document.getElementById("tradeBalance").textContent = `$${userTradeBalance.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                })}`;
+
+                try {
+                    const copiesResponse = await userApi.get("/copied-trades/count");
+                    const activeCopies =
+                        copiesResponse.data?.totalTrades ||
+                        copiesResponse.data?.count ||
+                        copiesResponse.data?.total ||
+                        0;
+
+                    document.getElementById("activeBots").textContent = activeCopies;
+                } catch (error) {
+                    document.getElementById("activeBots").textContent = "0";
+                }
+            } catch (error) {
+                console.error("Error fetching user balance:", error);
+                showToast("Failed to load user data", "error");
+            }
+        }
+
+        async function fetchBotTraders() {
+            const loadingEl = document.getElementById("loadingBots");
+            const emptyEl = document.getElementById("emptyBots");
+            const gridEl = document.getElementById("botTradersGrid");
+
+            try {
+                loadingEl.classList.remove("hidden");
+                emptyEl.classList.add("hidden");
+                gridEl.classList.add("hidden");
+
+                const response = await userApi.get("/traders/bots");
+                const bots = Array.isArray(response.data?.data) ? response.data.data : [];
+
+                if (!bots.length) {
+                    botTraders = [];
+                    filteredBots = [];
+                    document.getElementById("totalBots").textContent = "0";
+                    showEmptyState();
+                    return;
+                }
+
+                botTraders = bots.map(normalizeBot);
+                filteredBots = [...botTraders];
+                document.getElementById("totalBots").textContent = botTraders.length.toString();
+
+                filterBots();
+            } catch (error) {
+                console.error("Error fetching bot traders:", error);
+                botTraders = [];
+                filteredBots = [];
+                document.getElementById("totalBots").textContent = "0";
+
+                if (error.response?.status !== 404) {
+                    showToast(error.response?.data?.message || "Failed to load bot traders", "error");
+                }
+
+                showEmptyState();
+            } finally {
+                loadingEl.classList.add("hidden");
+            }
+        }
+
+        function filterBots() {
+            filteredBots = [...botTraders];
+            renderBotTraders();
+        }
+
+        function getBotInitials(name) {
+            if (!name) return "🤖";
+            const cleaned = String(name).trim();
+            if (!cleaned) return "🤖";
+
+            const words = cleaned.split(/\s+/);
+            if (words.length >= 2) {
+                return `${words[0][0]}${words[1][0]}`.toUpperCase();
+            }
+
+            return cleaned.slice(0, 2).toUpperCase();
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return "Recently";
+            const date = new Date(dateString);
+
+            if (isNaN(date.getTime())) return "Recently";
+
+            return date.toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric"
+            });
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function renderBotTraders() {
+            const grid = document.getElementById("botTradersGrid");
+            const empty = document.getElementById("emptyBots");
+
+            if (!filteredBots.length) {
+                empty.classList.remove("hidden");
+                grid.classList.add("hidden");
+                grid.innerHTML = "";
+                return;
+            }
+
+            empty.classList.add("hidden");
+            grid.classList.remove("hidden");
+
+            grid.innerHTML = filteredBots.map(bot => {
+                const performance7d = bot.performance_7d;
+                const winRate = bot.win_rate;
+                const totalPositions = bot.total_positions;
+                const totalCopiers = bot.total_copiers;
+                const aum = bot.aum;
+                const profitSharing = bot.profit_sharing;
+                const botName = escapeHtml(bot.trader_name);
+                const botInitials = escapeHtml(getBotInitials(bot.trader_name));
+                const joinDate = formatDate(bot.join_day);
+                const botBio = escapeHtml(bot.bio);
+
+                return `
+                    <div class="bot-card">
+                        <div class="bot-header">
+                            <div class="bot-info">
+                                <div class="bot-avatar">${botInitials}</div>
+                                <div class="bot-details">
+                                    <h3>${botName}</h3>
+                                    <div class="bot-type">Joined ${joinDate}</div>
+                                </div>
+                            </div>
+                            <div class="bot-status">${bot.status === "active" ? "Active" : escapeHtml(bot.status)}</div>
+                        </div>
+
+                        <div class="bot-description">${botBio}</div>
+
+                        <div class="bot-stats">
+                            <div class="stat-item">
+                                <div class="stat-value ${performance7d >= 0 ? "positive" : "negative"}">
+                                    ${performance7d >= 0 ? "+" : ""}${performance7d.toFixed(2)}%
+                                </div>
+                                <div class="stat-label">7d Performance</div>
+                            </div>
+
+                            <div class="stat-item">
+                                <div class="stat-value">${winRate.toFixed(1)}%</div>
+                                <div class="stat-label">Win Rate</div>
+                            </div>
+
+                            <div class="stat-item">
+                                <div class="stat-value">${totalPositions.toLocaleString()}</div>
+                                <div class="stat-label">Total Positions</div>
+                            </div>
+
+                            <div class="stat-item">
+                                <div class="stat-value">${totalCopiers.toLocaleString()}</div>
+                                <div class="stat-label">Copiers</div>
+                            </div>
+
+                            <div class="stat-item">
+                                <div class="stat-value">$${aum.toLocaleString(undefined, {
+                                    minimumFractionDigits: 0,
+                                    maximumFractionDigits: 2
+                                })}</div>
+                                <div class="stat-label">AUM</div>
+                            </div>
+
+                            <div class="stat-item">
+                                <div class="stat-value">${profitSharing.toFixed(1)}%</div>
+                                <div class="stat-label">Profit Share</div>
+                            </div>
+                        </div>
+
+                        <div class="bot-tags">
+                            <span class="bot-tag">AI Bot</span>
+                            ${performance7d > 0 ? '<span class="bot-tag">Profitable</span>' : ""}
+                            ${winRate >= 70 ? '<span class="bot-tag">High Win Rate</span>' : ""}
+                            ${totalPositions >= 200 ? '<span class="bot-tag">Experienced</span>' : ""}
+                            ${totalCopiers >= 100 ? '<span class="bot-tag">Popular</span>' : ""}
+                        </div>
+
+                        <button class="copy-btn" onclick="openCopyModal(${bot.id})">
+                            Copy Bot
+                        </button>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function showEmptyState() {
+            document.getElementById("emptyBots").classList.remove("hidden");
+            document.getElementById("botTradersGrid").classList.add("hidden");
+        }
+
+        async function openCopyModal(botId) {
+            selectedBotId = botId;
+
+            try {
+                const response = await userApi.get(`/traders/bots/${botId}`);
+                selectedBot = normalizeBot(response.data?.data || { id: botId });
+
+                const botName = selectedBot.trader_name || `Bot #${selectedBot.id}`;
+                const botInitials = getBotInitials(botName);
+
+                document.getElementById("modalBotName").textContent = botName;
+                document.getElementById("modalBotType").textContent = selectedBot.bio || "AI Trading Bot";
+                document.getElementById("modalBotAvatar").textContent = botInitials;
+                document.getElementById("availableBalance").textContent = userTradeBalance.toFixed(2);
+                document.getElementById("copyBotForm").reset();
+                document.getElementById("copyBotModal").classList.add("active");
+            } catch (error) {
+                console.error("Error loading bot details:", error);
+
+                const fallbackBot = botTraders.find(bot => Number(bot.id) === Number(botId));
+                if (fallbackBot) {
+                    selectedBot = normalizeBot(fallbackBot);
+
+                    document.getElementById("modalBotName").textContent = selectedBot.trader_name;
+                    document.getElementById("modalBotType").textContent = selectedBot.bio || "AI Trading Bot";
+                    document.getElementById("modalBotAvatar").textContent = getBotInitials(selectedBot.trader_name);
+                    document.getElementById("availableBalance").textContent = userTradeBalance.toFixed(2);
+                    document.getElementById("copyBotForm").reset();
+                    document.getElementById("copyBotModal").classList.add("active");
+
+                    showToast("Loaded cached bot details", "warning");
+                    return;
+                }
+
+                showToast(error.response?.data?.message || "Failed to load bot details", "error");
+            }
+        }
+
+        function closeCopyModal() {
+            document.getElementById("copyBotModal").classList.remove("active");
+            selectedBotId = null;
+            selectedBot = null;
+        }
+
+        async function handleCopyBot() {
+            const amount = parseFloat(document.getElementById("copyAmount").value);
+            const takeProfitValue = document.getElementById("copyTakeProfit").value;
+            const stopLossValue = document.getElementById("copyStopLoss").value;
+
+            const takeProfit = takeProfitValue ? parseFloat(takeProfitValue) : null;
+            const stopLoss = stopLossValue ? parseFloat(stopLossValue) : null;
+
+            if (!selectedBotId) {
+                showToast("No bot selected", "error");
+                return;
+            }
+
+            if (!amount || amount <= 0) {
+                showToast("Please enter a valid amount", "warning");
+                return;
+            }
+
+            if (amount > userTradeBalance) {
+                showToast("Insufficient trade balance", "error");
+                return;
+            }
+
+            if (amount < 10) {
+                showToast("Minimum copy amount is $10", "warning");
+                return;
+            }
+
+            if (takeProfit !== null && takeProfit <= 0) {
+                showToast("Take profit must be greater than 0", "warning");
+                return;
+            }
+
+            if (stopLoss !== null && stopLoss <= 0) {
+                showToast("Stop loss must be greater than 0", "warning");
+                return;
+            }
+
+            try {
+                const confirmBtn = document.getElementById("copyBotConfirm");
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = "Copying...";
+
+                const payload = {
+                    traderId: selectedBotId,
+                    amount
+                };
+
+                if (takeProfit !== null) payload.takeProfit = takeProfit;
+                if (stopLoss !== null) payload.stopLoss = stopLoss;
+
+                const response = await userApi.post("/copy-trader", payload);
+
+                showToast(response.data?.message || "Successfully copied bot strategy!", "success");
+                closeCopyModal();
+
+                await Promise.all([
+                    fetchTradeBalance(),
+                    fetchBotTraders()
+                ]);
+            } catch (error) {
+                console.error("Error copying bot:", error);
+                const message = error.response?.data?.message || "Failed to copy bot";
+                showToast(message, "error");
+            } finally {
+                const confirmBtn = document.getElementById("copyBotConfirm");
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = "Copy Bot";
+            }
+        }
+
+        async function refreshData() {
+            showToast("Refreshing data...", "info", 2000);
+
+            await Promise.all([
+                fetchTradeBalance(),
+                fetchBotTraders()
+            ]);
+
+            if (typeof loadSidebarNotificationCount === "function") {
+                loadSidebarNotificationCount();
+            }
+        }
+
+        function showToast(message, type = "info", duration = 5000) {
+            const toastContainer = document.getElementById("toastContainer");
+            const toastId = `toast-${++toastCounter}`;
+
+            const icons = {
+                success: "✅",
+                error: "❌",
+                warning: "⚠️",
+                info: "ℹ️"
+            };
+
+            const toast = document.createElement("div");
+            toast.id = toastId;
+            toast.className = `toast toast-${type}`;
+
+            toast.innerHTML = `
+                <div class="toast-icon">${icons[type] || icons.info}</div>
+                <div class="toast-content">${escapeHtml(message)}</div>
+                <button class="toast-close" onclick="hideToast('${toastId}')">&times;</button>
+                ${duration > 0 ? `<div class="toast-progress" id="${toastId}-progress"></div>` : ""}
+            `;
+
+            toastContainer.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add("show");
+            }, 10);
+
+            if (duration > 0) {
+                const progressBar = document.getElementById(`${toastId}-progress`);
+                if (progressBar) {
+                    progressBar.style.width = "100%";
+                    progressBar.style.transition = `width ${duration}ms linear`;
+
+                    setTimeout(() => {
+                        progressBar.style.width = "0%";
+                    }, 30);
+                }
+
+                setTimeout(() => {
+                    hideToast(toastId);
+                }, duration);
+            }
+
+            return toastId;
+        }
+
+        function hideToast(toastId) {
+            const toast = document.getElementById(toastId);
+            if (!toast) return;
+
+            toast.classList.add("hide");
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
+        }
+    </script>
+
+    <script src="./components/js/sidebar.js"></script>
+    <script src="./components/js/load-sidebar.js"></script>
+    <script src="../js/withAuth.js"></script>
+</body>
+</html>

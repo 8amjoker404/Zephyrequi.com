@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zephyrequi</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src="../js/config.js"></script>
+    <link rel="stylesheet" href="./components/css/sidebar.css" />
+    <link rel="stylesheet" href="./css/human-traders.css" />
+</head>
+<body>
+    <div class="dashboard">
+        <div id="sidebar-mount"></div>
+
+        <main class="main-content">
+            <header class="header">
+                <div class="header-left">
+                    <button class="mobile-toggle" id="mobile-toggle">☰</button>
+                    <div class="page-heading">Traders</div>
+                </div>
+
+                <div class="header-right">
+                    <button class="header-icon" onclick="window.location.href='notifications.html';">
+                        🔔
+                        <span class="notification-indicator"></span>
+                    </button>
+
+                    <div class="user-profile">
+                        <div class="avatar" id="userAvatar">JD</div>
+                        <div class="user-info">
+                            <div class="user-name" id="userName">Light Potato</div>
+                        </div>
+                    </div>
+
+                    <button class="header-logout-btn" onclick="logout()">Logout</button>
+                </div>
+            </header>
+
+            <div class="content">
+                <div id="toastContainer" class="toast-container"></div>
+
+                <!-- Copy Trader Modal -->
+                <div id="copyTraderModal" class="modal-overlay">
+                    <div class="modal-container">
+                        <div class="modal-trader-info">
+                            <div class="modal-trader-avatar" id="modalTraderAvatar"></div>
+                            <div class="modal-trader-details">
+                                <h3 id="modalTraderName">Trader Name</h3>
+                                <div class="modal-trader-type" id="modalTraderType">Professional Trader</div>
+                            </div>
+                        </div>
+
+                        <div class="modal-content">
+                            <form id="copyTraderForm">
+                                <div class="form-group">
+                                    <label class="form-label">Investment Amount ($)</label>
+                                    <input
+                                        type="number"
+                                        id="copyAmount"
+                                        class="form-input"
+                                        placeholder="0.00"
+                                        step="0.01"
+                                        min="1"
+                                        required
+                                    />
+                                    <small style="color: #9ca3af; font-size: 12px; margin-top: 4px; display: block;">
+                                        Available: $<span id="availableBalance">0.00</span>
+                                    </small>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Take Profit ($)</label>
+                                        <input
+                                            type="number"
+                                            id="copyTakeProfit"
+                                            class="form-input"
+                                            placeholder="Optional"
+                                            step="0.01"
+                                            min="0.01"
+                                        />
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label class="form-label">Stop Loss ($)</label>
+                                        <input
+                                            type="number"
+                                            id="copyStopLoss"
+                                            class="form-input"
+                                            placeholder="Optional"
+                                            step="0.01"
+                                            min="0.01"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div style="background: rgba(139, 92, 246, 0.1); padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+                                    <p style="color: #8b5cf6; font-size: 14px; margin: 0;">
+                                        <strong>Note:</strong> You will copy this trader's strategy and all future trades
+                                        will be automatically executed with your specified parameters.
+                                    </p>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="modal-actions">
+                            <button class="modal-btn cancel" id="copyTraderCancel" type="button">Cancel</button>
+                            <button class="modal-btn confirm" id="copyTraderConfirm" type="button">Copy Trader</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page Header -->
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Traders</h1>
+                        <p class="page-subtitle">Copy successful trading strategies from professional traders</p>
+                    </div>
+
+                    <div class="header-actions">
+                        <button class="refresh-btn" onclick="refreshData()">
+                            <span>🔄</span>
+                            <span>Refresh</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Balance Overview -->
+                <div class="balance-overview">
+                    <div class="balance-card">
+                        <div class="balance-header">
+                            <div class="balance-icon trade">📊</div>
+                            <div>
+                                <div class="balance-title">Trade Balance</div>
+                                <div class="balance-value" id="tradeBalance">$0.00</div>
+                                <div class="balance-subtitle">Available for copy trading</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="balance-card">
+                        <div class="balance-header">
+                            <div class="balance-icon human">👨‍💼</div>
+                            <div>
+                                <div class="balance-title">Active Copies</div>
+                                <div class="balance-value" id="activeCopies">0</div>
+                                <div class="balance-subtitle">Traders you're copying</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="balance-card">
+                        <div class="balance-header">
+                            <div class="balance-icon human">📈</div>
+                            <div>
+                                <div class="balance-title">Available Traders</div>
+                                <div class="balance-value" id="totalTraders">0</div>
+                                <div class="balance-subtitle">Professional traders</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trader Filter -->
+                <div class="trader-filter">
+                    <button class="filter-btn active" data-filter="all">All Traders</button>
+                    <button class="filter-btn" data-filter="profitable">Profitable (7d+)</button>
+                    <button class="filter-btn" data-filter="high-win-rate">High Win Rate (70%+)</button>
+                    <button class="filter-btn" data-filter="experienced">Experienced (200+ trades)</button>
+                    <button class="filter-btn" data-filter="popular">Popular (100+ copiers)</button>
+                </div>
+
+                <!-- Loading State -->
+                <div id="loadingTraders" class="loading-state">
+                    <div class="loading-spinner"></div>
+                    <p>Loading traders...</p>
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyTraders" class="empty-state hidden">
+                    <div class="empty-icon">👨‍💼</div>
+                    <h4 class="empty-title">No Traders Available</h4>
+                    <p class="empty-subtitle">Check back later for new traders to follow</p>
+                </div>
+
+                <!--  Traders Grid -->
+                <div id="humanTradersGrid" class="human-traders-grid hidden"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const userApi = axios.create({
+            baseURL: `${window.API_BASE_URL}/users`,
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${localStorage.getItem("token")}`
+            }
+        });
+
+        let humanTraders = [];
+        let filteredTraders = [];
+        let selectedTraderId = null;
+        let selectedTrader = null;
+        let userTradeBalance = 0;
+        let currentFilter = "all";
+        let toastCounter = 0;
+
+        document.addEventListener("DOMContentLoaded", function () {
+            initializePage();
+            setupEventListeners();
+            fetchTradeBalance();
+            fetchHumanTraders();
+        });
+
+        function initializePage() {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                showToast("Please login to access human traders", "error");
+                setTimeout(() => {
+                    window.location.href = "../index.html";
+                }, 2000);
+                return;
+            }
+        }
+
+        function setupEventListeners() {
+            document.getElementById("copyTraderCancel").addEventListener("click", closeCopyModal);
+            document.getElementById("copyTraderConfirm").addEventListener("click", handleCopyTrader);
+
+            document.querySelectorAll(".filter-btn").forEach(btn => {
+                btn.addEventListener("click", function () {
+                    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+                    this.classList.add("active");
+                    currentFilter = this.dataset.filter;
+                    filterTraders();
+                });
+            });
+
+            document.addEventListener("keydown", function (event) {
+                if (event.key === "Escape") {
+                    closeCopyModal();
+                }
+            });
+
+            document.getElementById("copyTraderModal").addEventListener("click", function (event) {
+                if (event.target === this) {
+                    closeCopyModal();
+                }
+            });
+        }
+
+        async function fetchTradeBalance() {
+            try {
+                const balanceResponse = await userApi.get("/balances/summary");
+                userTradeBalance = parseFloat(balanceResponse.data.balances.trade_balance || 0);
+
+                document.getElementById("tradeBalance").textContent = `$${userTradeBalance.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                })}`;
+
+                try {
+                    const copiesResponse = await userApi.get("/copied-trades/count");
+                    const activeCopies = copiesResponse.data.totalTrades || 0;
+                    document.getElementById("activeCopies").textContent = activeCopies;
+                } catch (error) {
+                    document.getElementById("activeCopies").textContent = "0";
+                }
+            } catch (error) {
+                console.error("Error fetching user data:", error);
+                showToast("Failed to load user data", "error");
+            }
+        }
+
+        async function fetchHumanTraders() {
+            try {
+                document.getElementById("loadingTraders").classList.remove("hidden");
+                document.getElementById("emptyTraders").classList.add("hidden");
+                document.getElementById("humanTradersGrid").classList.add("hidden");
+
+                const response = await userApi.get("/traders/humans");
+
+                if (response.data.data && response.data.data.length > 0) {
+                    humanTraders = response.data.data;
+                    filteredTraders = [...humanTraders];
+                    document.getElementById("totalTraders").textContent = humanTraders.length;
+                    renderHumanTraders();
+                } else {
+                    showEmptyState();
+                }
+            } catch (error) {
+                console.error("Error fetching human traders:", error);
+                if (error.response?.status === 404) {
+                    showEmptyState();
+                } else {
+                    showToast("Failed to load human traders", "error");
+                    showEmptyState();
+                }
+            } finally {
+                document.getElementById("loadingTraders").classList.add("hidden");
+            }
+        }
+
+        function filterTraders() {
+            if (currentFilter === "all") {
+                filteredTraders = [...humanTraders];
+            } else if (currentFilter === "profitable") {
+                filteredTraders = humanTraders.filter(trader => parseFloat(trader.performance_7d || 0) > 0);
+            } else if (currentFilter === "high-win-rate") {
+                filteredTraders = humanTraders.filter(trader => parseFloat(trader.win_rate || 0) >= 70);
+            } else if (currentFilter === "experienced") {
+                filteredTraders = humanTraders.filter(trader => parseInt(trader.total_positions || 0) >= 200);
+            } else if (currentFilter === "popular") {
+                filteredTraders = humanTraders.filter(trader => parseInt(trader.total_copiers || 0) >= 100);
+            }
+
+            renderHumanTraders();
+        }
+
+        function getTraderInitials(name) {
+            if (!name) return "T";
+            const words = name.split(" ");
+            if (words.length >= 2) {
+                return (words[0][0] + words[1][0]).toUpperCase();
+            }
+            return name.substring(0, 2).toUpperCase();
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric"
+            });
+        }
+
+        function renderHumanTraders() {
+            const grid = document.getElementById("humanTradersGrid");
+            grid.classList.remove("hidden");
+            document.getElementById("emptyTraders").classList.add("hidden");
+
+            if (filteredTraders.length === 0) {
+                document.getElementById("emptyTraders").classList.remove("hidden");
+                grid.classList.add("hidden");
+                return;
+            }
+
+            grid.innerHTML = filteredTraders.map(trader => {
+                const performance7d = parseFloat(trader.performance_7d || 0);
+                const winRate = parseFloat(trader.win_rate || 0);
+                const totalPositions = parseInt(trader.total_positions || 0);
+                const totalCopiers = parseInt(trader.total_copiers || 0);
+                const aum = parseFloat(trader.aum || 0);
+                const profitSharing = parseFloat(trader.profit_sharing || 0);
+                const traderName = trader.trader_name || `Trader #${trader.id}`;
+                const traderInitials = getTraderInitials(traderName);
+                const joinDate = formatDate(trader.join_day);
+
+                return `
+                    <div class="trader-card">
+                        <div class="trader-header">
+                            <div class="trader-info">
+                                <div class="trader-avatar">${traderInitials}</div>
+                                <div class="trader-details">
+                                    <h3>${traderName}</h3>
+                                    <div class="trader-type">Joined ${joinDate}</div>
+                                </div>
+                            </div>
+                            <div class="trader-level">Active</div>
+                        </div>
+
+                        <div class="trader-description">
+                            ${trader.bio || "Professional trader with expertise in market analysis and strategic trading approaches."}
+                        </div>
+
+                        <div class="trader-stats">
+                            <div class="stat-item">
+                                <div class="stat-value ${performance7d >= 0 ? "positive" : "negative"}">
+                                    ${performance7d >= 0 ? "+" : ""}${performance7d.toFixed(2)}%
+                                </div>
+                                <div class="stat-label">7d Performance</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">${winRate.toFixed(1)}%</div>
+                                <div class="stat-label">Win Rate</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">${totalPositions}</div>
+                                <div class="stat-label">Total Positions</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">${totalCopiers}</div>
+                                <div class="stat-label">Copiers</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">$${aum.toLocaleString()}</div>
+                                <div class="stat-label">AUM</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value">${profitSharing.toFixed(1)}%</div>
+                                <div class="stat-label">Profit Share</div>
+                            </div>
+                        </div>
+
+                        <div class="trader-tags">
+                            <span class="trader-tag">Professional</span>
+                            ${performance7d > 0 ? '<span class="trader-tag">Profitable</span>' : ""}
+                            ${winRate >= 70 ? '<span class="trader-tag">High Win Rate</span>' : ""}
+                            ${totalPositions >= 200 ? '<span class="trader-tag">Experienced</span>' : ""}
+                            ${totalCopiers >= 100 ? '<span class="trader-tag">Popular</span>' : ""}
+                        </div>
+
+                        <button class="copy-btn" onclick="openCopyModal(${trader.id})">
+                            Copy Trader
+                        </button>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function showEmptyState() {
+            document.getElementById("emptyTraders").classList.remove("hidden");
+            document.getElementById("humanTradersGrid").classList.add("hidden");
+        }
+
+        async function openCopyModal(traderId) {
+            selectedTraderId = traderId;
+
+            try {
+                const response = await userApi.get(`/traders/human/${traderId}`);
+                selectedTrader = response.data.data;
+
+                const traderName = selectedTrader.trader_name || `Trader #${selectedTrader.id}`;
+                const traderInitials = getTraderInitials(traderName);
+
+                document.getElementById("modalTraderName").textContent = traderName;
+                document.getElementById("modalTraderType").textContent = selectedTrader.bio || "Professional Trader";
+                document.getElementById("modalTraderAvatar").textContent = traderInitials;
+
+                document.getElementById("availableBalance").textContent = userTradeBalance.toFixed(2);
+                document.getElementById("copyTraderModal").classList.add("active");
+                document.getElementById("copyTraderForm").reset();
+            } catch (error) {
+                console.error("Error fetching trader details:", error);
+                showToast("Failed to load trader details", "error");
+            }
+        }
+
+        function closeCopyModal() {
+            document.getElementById("copyTraderModal").classList.remove("active");
+            selectedTraderId = null;
+            selectedTrader = null;
+        }
+
+        async function handleCopyTrader() {
+            const amount = parseFloat(document.getElementById("copyAmount").value);
+            const takeProfit = parseFloat(document.getElementById("copyTakeProfit").value) || null;
+            const stopLoss = parseFloat(document.getElementById("copyStopLoss").value) || null;
+
+            if (!amount || amount <= 0) {
+                showToast("Please enter a valid amount", "warning");
+                return;
+            }
+
+            if (amount > userTradeBalance) {
+                showToast("Insufficient trade balance", "error");
+                return;
+            }
+
+            if (amount < 10) {
+                showToast("Minimum copy amount is $10", "warning");
+                return;
+            }
+
+            try {
+                const confirmBtn = document.getElementById("copyTraderConfirm");
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = "Copying...";
+
+                const response = await userApi.post("/copy-trader", {
+                    traderId: selectedTraderId,
+                    amount: amount,
+                    takeProfit: takeProfit,
+                    stopLoss: stopLoss
+                });
+
+                showToast(response.data.message || "Successfully copied trader strategy!", "success");
+                closeCopyModal();
+                fetchTradeBalance();
+            } catch (error) {
+                console.error("Error copying trader:", error);
+                const message = error.response?.data?.message || "Failed to copy trader";
+                showToast(message, "error");
+            } finally {
+                const confirmBtn = document.getElementById("copyTraderConfirm");
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = "Copy Trader";
+            }
+        }
+
+        function refreshData() {
+            showToast("Refreshing data...", "info");
+            fetchTradeBalance();
+            fetchHumanTraders();
+            if (typeof loadSidebarNotificationCount === "function") {
+                loadSidebarNotificationCount();
+            }
+        }
+
+        function showToast(message, type = "info", duration = 5000) {
+            const toastContainer = document.getElementById("toastContainer");
+            const toastId = `toast-${++toastCounter}`;
+
+            const icons = {
+                success: "✅",
+                error: "❌",
+                warning: "⚠️",
+                info: "ℹ️"
+            };
+
+            const toast = document.createElement("div");
+            toast.id = toastId;
+            toast.className = `toast toast-${type}`;
+
+            toast.innerHTML = `
+                <div class="toast-icon">${icons[type] || icons.info}</div>
+                <div class="toast-content">${message}</div>
+                <button class="toast-close" onclick="hideToast('${toastId}')">&times;</button>
+                ${duration > 0 ? `<div class="toast-progress" id="${toastId}-progress"></div>` : ""}
+            `;
+
+            toastContainer.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add("show");
+            }, 10);
+
+            if (duration > 0) {
+                const progressBar = document.getElementById(`${toastId}-progress`);
+                if (progressBar) {
+                    progressBar.style.width = "100%";
+                    progressBar.style.transition = `width ${duration}ms linear`;
+                    setTimeout(() => {
+                        progressBar.style.width = "0%";
+                    }, 10);
+                }
+
+                setTimeout(() => {
+                    hideToast(toastId);
+                }, duration);
+            }
+
+            return toastId;
+        }
+
+        function hideToast(toastId) {
+            const toast = document.getElementById(toastId);
+            if (toast) {
+                toast.classList.add("hide");
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 300);
+            }
+        }
+    </script>
+
+    <script src="./components/js/sidebar.js"></script>
+    <script src="./components/js/load-sidebar.js"></script>
+    <script src="../js/withAuth.js"></script>
+</body>
+</html>
